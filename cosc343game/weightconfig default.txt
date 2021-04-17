@@ -1,0 +1,14 @@
+{
+    "survivalRate": 0.6,
+    "survivalOffset": 0.7,
+    "mutationRate": 0.15,
+    "mutationDegree": 25,
+    "mutationDeleterious": 0.5,
+    "weightAlive": 20,
+    "weightTurn": 0.3,
+    "weightSize": 8,
+    "weightStrawB": 35,
+    "weightEnemy": 45,
+    "weightTravel": 0.0001,
+    "weightBounce": 0.1
+}
