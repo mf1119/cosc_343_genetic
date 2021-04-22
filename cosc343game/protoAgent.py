@@ -1,14 +1,15 @@
+import random
 import json
 from datetime import datetime
-import random
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 
-playerName = "myAgent"
+playerName = "protoCreature"
 
-# Training Tuples
-trainingSchedule = [("hunter", 1000)]
+# Training
+trainingSchedule = [("hunter", 300)]
 
 ###
 # Traits
@@ -34,51 +35,62 @@ class Chromosome:
     _SHELTER = 7  # Affinity towards stronger friendlies
     _PROTECT = 8  # Affinity towards weaker friendlies
 
+# Wall
+_INTROVERSION = 0  # Affinity towards walls
+
+# Strawberries
+_GATHERER = 1  # Affinity towards berries
+_HUNGRY = 2  # Likelihood of eating berries. Sometimes, might have to run if enemies near.
+
+# Enemies
+_CONFIDENCE = 3  # Affinity towards enemies generally
+_AGGRESSION = 4  # Affinity towards weaker enemies
+_FEARFUL = 5  # Affinity towards stronger enemies
+
+# Friendlies
+_CLUMP = 6  # Affinity towards all friendlies
+_SHELTER = 7  # Affinity towards stronger friendlies
+_PROTECT = 8  # Affinity towards weaker friendlies
 
 ###
 # Weights - Default Values
 ###
 # Generation related vars
-SURVIVAL_RATE = 0.7
-SURVIVAL_OFFSET = 0.5
+SURVIVAL_RATE = 0.3
+SURVIVAL_OFFSET = 0.7
 MUTATION_RATE = 0.8
-MUTATION_DEGREE = 15
+MUTATION_DEGREE = 25
+MUTATION_DELETERIOUS = 0.5
 
-# Fitness weights       # Optimal values for the impatient
-WEIGHT_ALIVE = 30       # 30
-WEIGHT_TURN = 0.5       # 0.5
-WEIGHT_SIZE = 20        # 20
-WEIGHT_STRAWB = 60      # 60
-WEIGHT_ENEMY = 50       # 50
-WEIGHT_TRAVEL = 1       # 1
-WEIGHT_BOUNCE = 0.5     # 0.5
+# Fitness weights
+WEIGHT_ALIVE = 35
+WEIGHT_TURN = 0
+WEIGHT_SIZE = 20
+WEIGHT_STRAWB = 50
+WEIGHT_ENEMY = 70
+WEIGHT_TRAVEL = 0
+WEIGHT_BOUNCE = 0
 
+_SURVIVAL_RATE = 0
+_SURVIVAL_OFFSET = 1
+_MUTATION_RATE = 2
+_MUTATION_DEGREE = 3
+_MUTATION_DELETERIOUS = 4
 
-class Weight:
-    _SURVIVAL_RATE = 0
-    _SURVIVAL_OFFSET = 1
-    _MUTATION_RATE = 2
-    _MUTATION_DEGREE = 3
-    _MUTATION_DELETERIOUS = 4
+_WEIGHT_ALIVE = 5
+_WEIGHT_TURN = 6
+_WEIGHT_SIZE = 7
+_WEIGHT_STRAWB = 8
+_WEIGHT_ENEMY = 9
+_WEIGHT_TRAVEL = 10
+_WEIGHT_BOUNCE = 11
 
-    _WEIGHT_ALIVE = 5
-    _WEIGHT_TURN = 6
-    _WEIGHT_SIZE = 7
-    _WEIGHT_STRAWB = 8
-    _WEIGHT_ENEMY = 9
-    _WEIGHT_TRAVEL = 10
-    _WEIGHT_BOUNCE = 11
-
-
-# Chromosome values are randomly assigned a value between -INIT and +INIT
 INIT_RANGE = 100
-
 
 class MyCreature:
     def __init__(self):
-        self.chromosome = [0, 0, 0, 0, 0, 0, 0, 0, 0]
-        for x in range(CHROMOSOME_LENGTH):
-            self.chromosome[x] = random.randrange(-INIT_RANGE, INIT_RANGE)
+        # The ultimate munching machine
+        self.chromosome = [-100, 20000, 3000000, -5000, 5000000, -5000, -20000, 0, 0]
 
     def AgentFunction(self, percepts):
         # The 'actions' variable must be returned:
@@ -104,70 +116,67 @@ class MyCreature:
             for y in range(5):
                 if creature_map[x, y] < 0:
                     # If all enemies
-                    xDir += ignore_divide_zero(1, (x - 2)) * self.chromosome[Chromosome._CONFIDENCE]
-                    yDir += ignore_divide_zero(1, (y - 2)) * self.chromosome[Chromosome._CONFIDENCE]
+                    xDir += ignore_divide_zero(1, (x - 2)) * self.chromosome[_CONFIDENCE]
+                    yDir += ignore_divide_zero(1, (y - 2)) * self.chromosome[_CONFIDENCE]
                     if abs(creature_map[x, y]) > creature_map[2, 2]:
                         # If bigger enemies
-                        xDir += ignore_divide_zero(1, (x - 2)) * self.chromosome[Chromosome._FEARFUL] * (
+                        xDir += ignore_divide_zero(1, (x - 2)) * self.chromosome[_FEARFUL] * (
                                 abs(creature_map[x, y]) - creature_map[2, 2])
-                        yDir += ignore_divide_zero(1, (y - 2)) * self.chromosome[Chromosome._FEARFUL] * (
+                        yDir += ignore_divide_zero(1, (y - 2)) * self.chromosome[_FEARFUL] * (
                                 abs(creature_map[x, y]) - creature_map[2, 2])
                     elif abs(creature_map[x, y]) < creature_map[2, 2]:
                         # If smaller enemies
-                        xDir += ignore_divide_zero(1, (x - 2)) * self.chromosome[Chromosome._AGGRESSION] * (
+                        xDir += ignore_divide_zero(1, (x - 2)) * self.chromosome[_AGGRESSION] * (
                                 creature_map[2, 2] - abs(creature_map[x, y]))
-                        yDir += ignore_divide_zero(1, (y - 2)) * self.chromosome[Chromosome._AGGRESSION] * (
+                        yDir += ignore_divide_zero(1, (y - 2)) * self.chromosome[_AGGRESSION] * (
                                 creature_map[2, 2] - abs(creature_map[x, y]))
                 if creature_map[x, y] > 0:
                     # If friendly
                     if not ((x == 2) and (y == 2)):
-                        xDir += ignore_divide_zero(1, (x - 2)) * self.chromosome[Chromosome._CLUMP]
-                        yDir += ignore_divide_zero(1, (y - 2)) * self.chromosome[Chromosome._CLUMP]
+                        xDir += ignore_divide_zero(1, (x - 2)) * self.chromosome[_CLUMP]
+                        yDir += ignore_divide_zero(1, (y - 2)) * self.chromosome[_CLUMP]
 
                     if creature_map[x, y] > creature_map[2, 2]:
                         # If bigger friends
-                        xDir += ignore_divide_zero(1, (x - 2)) * self.chromosome[Chromosome._SHELTER] * (
+                        xDir += ignore_divide_zero(1, (x - 2)) * self.chromosome[_SHELTER] * (
                                 creature_map[x, y] - creature_map[2, 2])
-                        yDir += ignore_divide_zero(1, (y - 2)) * self.chromosome[Chromosome._SHELTER] * (
+                        yDir += ignore_divide_zero(1, (y - 2)) * self.chromosome[_SHELTER] * (
                                 creature_map[x, y] - creature_map[2, 2])
                     elif creature_map[x, y] < creature_map[2, 2]:
                         # If smaller friends
-                        xDir += ignore_divide_zero(1, (x - 2)) * self.chromosome[Chromosome._PROTECT] * (
+                        xDir += ignore_divide_zero(1, (x - 2)) * self.chromosome[_PROTECT] * (
                                 creature_map[2, 2] - creature_map[x, y])
-                        yDir += ignore_divide_zero(1, (y - 2)) * self.chromosome[Chromosome._PROTECT] * (
+                        yDir += ignore_divide_zero(1, (y - 2)) * self.chromosome[_PROTECT] * (
                                 creature_map[2, 2] - creature_map[x, y])
 
         # food
         if food_map[2, 2] > 0:
             # If currently on food
-            # The *5 is cheating a bit to make it likelier to eat, but it's
-            # competing with 10 other variables, so I hope this will be considered fair.
-            # *5 isn't so huge that other more urgent impetus won't block it.
-            eatAction = self.chromosome[Chromosome._HUNGRY]
+            eatAction = self.chromosome[_HUNGRY] * 5
 
         for x in range(5):
             for y in range(5):
                 if food_map[x, y] > 0:
                     # If food nearby
-                    xDir += ignore_divide_zero(10, (x - 2)) * self.chromosome[Chromosome._GATHERER]
-                    yDir += ignore_divide_zero(10, (y - 2)) * self.chromosome[Chromosome._GATHERER]
+                    xDir += ignore_divide_zero(10, (x - 2)) * self.chromosome[_GATHERER]
+                    yDir += ignore_divide_zero(10, (y - 2)) * self.chromosome[_GATHERER]
 
         # wall
         for x in range(5):
             for y in range(5):
                 if wall_map[x, y] > 0:
                     # If there is wall nearby
-                    xDir += ignore_divide_zero(10, (x - 2)) * self.chromosome[Chromosome._INTROVERSION]
-                    yDir += ignore_divide_zero(10, (y - 2)) * self.chromosome[Chromosome._INTROVERSION]
+                    xDir += ignore_divide_zero(10, (x - 2)) * self.chromosome[_INTROVERSION]
+                    yDir += ignore_divide_zero(10, (y - 2)) * self.chromosome[_INTROVERSION]
 
-        if xDir > 0:
+        if (xDir > 0):
             # Go right
             actions[2] = xDir
         else:
             # Go left
             actions[0] = -xDir
 
-        if yDir > 0:
+        if (yDir > 0):
             # Go down
             actions[3] = yDir
         else:
@@ -189,21 +198,21 @@ def ignore_divide_zero(a, b):
 
 # Convert bool to 0 or 1
 def bool_to_num(a):
-    if a:
+    if a == True:
         return 1
     else:
         return 0
 
 
-class Generation:
-    value = 0
-
-
 def newGeneration(old_population):
-    Generation.value += 1
-
     # Return list of new agents of length N
     N = len(old_population)
+    newPopulation = list()
+    for n, creature in enumerate(old_population):
+        new_creature = MyCreature()
+        newPopulation.append(new_creature)
+
+    return (newPopulation, 5)
 
     # Should = 9, but done this way in case code changes.
     chromosomeLength = len(old_population[0].chromosome)
@@ -218,12 +227,12 @@ def newGeneration(old_population):
     for n, creature in enumerate(old_population):
         # Fitness calculated by predetermined weighting
         fitnessVal = 0
-        fitnessVal += bool_to_num(creature.alive) * WEIGHT_ALIVE
-        fitnessVal += creature.turn * WEIGHT_TURN
-        fitnessVal += creature.strawb_eats * WEIGHT_STRAWB
-        fitnessVal += creature.enemy_eats * WEIGHT_ENEMY
-        fitnessVal += creature.squares_visited * WEIGHT_TRAVEL
-        fitnessVal += creature.bounces + WEIGHT_BOUNCE
+        fitnessVal += bool_to_num(creature.alive) * weight.values[_WEIGHT_ALIVE]
+        fitnessVal += creature.turn * weight.values[_WEIGHT_TURN]
+        fitnessVal += creature.strawb_eats * weight.values[_WEIGHT_STRAWB]
+        fitnessVal += creature.enemy_eats * weight.values[_WEIGHT_ENEMY]
+        fitnessVal += creature.squares_visited * weight.values[_WEIGHT_TRAVEL]
+        fitnessVal += creature.bounces + weight.values[_WEIGHT_BOUNCE]
 
         # Append fitness as "tag" on to chromosome
         fitnessAdded = np.append(creature.chromosome, fitnessVal)
@@ -237,12 +246,12 @@ def newGeneration(old_population):
 
     # Offset is a proportion of the fitness of the least fit surviving individual
     offset = sortedFitness[len(sortedFitness)
-                           - int(N * SURVIVAL_RATE)][chromosomeLength] * SURVIVAL_OFFSET
+                           - int(N * weight.values[_SURVIVAL_RATE])][chromosomeLength] * weight.values[_SURVIVAL_OFFSET]
 
     # parentCandidates will only contain a proportion of the old_population, according to weight.values[_SURVIVAL_RATE]
     parentCandidates = list()
     tally = 0  # Records the total fitness of all individuals
-    for x in range(int(N * SURVIVAL_RATE)):
+    for x in range(int(N * weight.values[_SURVIVAL_RATE])):
         # Adding sortedFitness[N - 1] is fittest individual
         tally += sortedFitness[N - x - 1][chromosomeLength] - offset
         sortedFitness[N - x - 1][chromosomeLength] = tally
@@ -276,13 +285,19 @@ def newGeneration(old_population):
             randomMutation = random.random()
 
             # Mutate only if it hits mutation rate
-            if randomMutation < MUTATION_RATE:
-                # Mutation ranges from -DEGREE to +DEGREE
-                randomMutation = (random.random() - 0.5) * MUTATION_DEGREE * 2
+            if randomMutation < weight.values[_MUTATION_RATE]:
+                # Mutation ranges from -(DEGREE*DELETERIOUS) to +DEGREE
+                randomMutation = (random.random() * (1 + weight.values[_MUTATION_DELETERIOUS])
+                                  - weight.values[_MUTATION_DELETERIOUS]) * weight.values[_MUTATION_DEGREE]
             else:
                 randomMutation = 0
 
             new_val = parentCandidates[random.choice([parentOne, parentTwo])][x] + randomMutation
+            #
+            # if new_val > 0:
+            #     new_val = new_creature.chromosome[x] + randomMutation
+            # else:
+            #     new_val = new_creature.chromosome[x] - randomMutation
 
             new_creature.chromosome[x] = new_val
 
@@ -292,5 +307,5 @@ def newGeneration(old_population):
     # At the end you need to compute average fitness and return it along with your new population
     avg_fitness = np.mean(fitnessTable[:, chromosomeLength])
 
-    return new_population, int(avg_fitness)
+    return (new_population, int(avg_fitness))
 

@@ -3,13 +3,13 @@
 game_params = {
 
     # File implementing the agent playing as player 1 (exclude the .py extension)
-    "player1": "monsterAgent",
+    "player1": "myAgent",
 
     # File implementing the agent playing as player 2 (exclude the .py extension)
     "player2": "hunterPlayer",
 
     # Speed of visualisation ('slow','normal','fast')
-    "visSpeed": 'slow',
+    "visSpeed": 'normal',
 
     # Visualisation resolution
     "visResolution": (720, 480),
